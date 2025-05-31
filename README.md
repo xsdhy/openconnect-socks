@@ -1,6 +1,8 @@
 # openconnect-socks
 将openconnect连接的VPN通过socks5代理暴露出来
 
+
+
 # use
 ```ymal
 version: "3.8"
@@ -16,4 +18,5 @@ services:
     environment:
       - VPN_PASSWORD=
       - VPN_SERVER=
+      - TEST_URL=
 ```
