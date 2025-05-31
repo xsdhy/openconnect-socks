@@ -42,7 +42,7 @@ monitor() {
         else
             echo "$(date): Connection test to $TEST_URL successful"
         fi
-        sleep 30
+        sleep 300
     done
 }
 
