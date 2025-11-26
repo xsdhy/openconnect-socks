@@ -1,17 +1,16 @@
 # Build stage
 FROM debian:bullseye-slim as builder
 
-# Install build dependencies and CA certificates
+# Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git build-essential ca-certificates \
+    wget gzip ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Build microsocks
-RUN git config --global http.sslVerify false && \
-    git clone https://github.com/rofl0r/microsocks && \
-    cd microsocks && \
-    make && \
-    cd ..
+# Download and install gost
+RUN wget https://github.com/ginuerzh/gost/releases/download/v2.11.5/gost-linux-amd64-2.11.5.gz && \
+    gzip -d gost-linux-amd64-2.11.5.gz && \
+    mv gost-linux-amd64-2.11.5 /usr/local/bin/gost && \
+    chmod +x /usr/local/bin/gost
 
 # Runtime stage
 FROM debian:bullseye-slim
@@ -21,8 +20,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     openconnect ca-certificates curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy built microsocks binary from builder
-COPY --from=builder /microsocks/microsocks /usr/local/bin/
+# Copy gost binary from builder
+COPY --from=builder /usr/local/bin/gost /usr/local/bin/
 
 # Create app directory
 RUN mkdir -p /app && chmod 755 /app

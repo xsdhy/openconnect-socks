@@ -4,7 +4,7 @@
 # ====================================================
 # 功能特性：
 # * 指数退避的 VPN 连接（使用 AnyConnect 协议）
-# * 带故障计数器的自愈 microsocks 代理
+# * 带故障计数器的自愈 gost 代理
 # * 通过 SOCKS5h 进行健康检查以验证 DNS + HTTP 路径
 # * 优雅关闭和正确的退出码供编排器使用
 
@@ -184,7 +184,7 @@ start_vpn() {
 #################################
 # 启动 SOCKS5 代理服务，带严格的验证机制
 start_socks() {
-  log "[SOCKS] 在端口 $PROXY_PORT 启动 microsocks"
+  log "[SOCKS] 在端口 $PROXY_PORT 启动 gost"
   
   # 总是先清空 PID 以避免使用过期值
   SOCKS_PID=""
@@ -200,14 +200,14 @@ start_socks() {
     fi
   fi
   
-  # 启动 microsocks 进程
-  microsocks -p "$PROXY_PORT" &
+  # 启动 gost 进程
+  gost -L socks5://:${PROXY_PORT} &
   local new_pid=$!
   
   # 等待进程启动并验证其仍在运行
   sleep 2
   if ! kill -0 "$new_pid" 2>/dev/null; then
-    log "[SOCKS] microsocks 启动失败（进程已死亡）"
+    log "[SOCKS] gost 启动失败（进程已死亡）"
     # SOCKS_PID 保持为空 - 无需清理
     return 1
   fi
@@ -238,7 +238,7 @@ start_socks() {
   fi
   
   if ! $test_success; then
-    log "[SOCKS] microsocks 已启动但端口 $PROXY_PORT 不接受连接"
+    log "[SOCKS] gost 已启动但端口 $PROXY_PORT 不接受连接"
     kill "$new_pid" 2>/dev/null || true
     # 短暂等待进程退出
     sleep 1
@@ -347,7 +347,7 @@ monitor() {
   local fail_count=0 selfheal_failures=0 socks_restart_failures=0
   
   while true; do
-    # 检查 microsocks 是否存活（安全的 PID 检查）
+    # 检查 gost 是否存活（安全的 PID 检查）
     local socks_alive=false
     if [[ -n "${SOCKS_PID}" && "${SOCKS_PID}" =~ ^[0-9]+$ ]] && kill -0 "${SOCKS_PID}" 2>/dev/null; then
       socks_alive=true
@@ -355,13 +355,13 @@ monitor() {
     
     # 如果 SOCKS 进程不存活，尝试重启
     if ! $socks_alive; then
-      log "[监控] microsocks 未运行，正在重启"
+      log "[监控] gost 未运行，正在重启"
       if start_socks; then
-        log "[监控] microsocks 重启成功"
+        log "[监控] gost 重启成功"
         socks_restart_failures=0  # 成功时重置计数器
       else
         (( socks_restart_failures++ ))
-        log "[监控] microsocks 重启失败 ($socks_restart_failures/5)"
+        log "[监控] gost 重启失败 ($socks_restart_failures/5)"
         
         # 如果 SOCKS 持续重启失败，触发全栈重启
         if (( socks_restart_failures >= 5 )); then
